@@ -1,0 +1,28 @@
+apt list
+  26 apt list | grep ntp
+  27 ntpstat
+  28 aptsudo apt-get remove ntp
+  29 sudo apt-get remove ntp
+  30 sudo apt-get remove --auto-remove ntp
+  31 sudo apt-get purge ntp
+  32 sudo apt-get purge --auto-remove ntp
+  33 apt list | grep ntp
+  34 apt install chrony
+  35 /etc/chrony/
+  36 cd /etc/
+  37 ls
+  38 cd chrony/
+  39 ls
+  40 vi chrony.conf
+  add  
+  server 169.254.169.123 prefer iburst minpoll 4 maxpoll 4  41 /etc/init.d/chrony restart
+  42 cd
+  43 chronyc tracking
+  44 service chrony status
+  45 ntpq -np 
+
+  48 chronyc sources -v
+  49 chkconfig chronyd on
+  56 systemctl enable chronyd
+  57 systemctl enable chrony
+  58 history
