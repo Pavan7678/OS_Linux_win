@@ -1,0 +1,129 @@
+With Internet Access
+With direct access to the Internet and the Oracle download location, the Clairvoyant hadoop-deployment-bash scripts can be used to update the JDK on all of the servers in the Hadoop cluster.
+Pre-Requisites
+Git installed on the main server.
+Prep Tasks
+Clone the git repository on the main server. (git clone https://github.com/teamclairvoyant/hadoop-deployment-bash)
+Create a HOSTLIST file with each server listed in the file.
+Define GITREPO as the location of the git working copy. (cd hadoop-deployment-bash; GITREPO=$(pwd))
+Copy several of the scripts to the servers. (for HOST in $(cat HOSTLIST); do echo "*** $HOST"; scp -p ${GITREPO}/install_jdk.sh ${GITREPO}/install_jce.sh ${GITREPO}/tls/configure_jdk_tlsv1.2.sh $HOST:; done)
+Change Tasks
+In CM: Put all clusters and CMS in Maintenance mode.
+In CM: Stop all cluster services.  Stop all Key Trustee Server processes.  Stop all CMS processes.
+Stop the CM server. (sudo service cloudera-scm-server stop; sudo service cloudera-scm-server-db2 stop)
+On each server: Save the version information on the currently installed JDK. (java -version >~/java-version 2>&1; rpm -q jdk1.8 >~/jdk-version)
+On each server: Save the version information on the currently installed JDK.  Backup the jssecacerts and java.security files. Upgrade the JDK. Install the Java Cryptography Extensions (JCE). Update the java.security file to disable TLSv1.0 and TLSv1.1 protocols. Restore the jssecacerts file.
+for HOST in $(cat HOSTLIST); do
+  echo "*** $HOST"
+  ssh -qt $HOST 'java -version >~/java-version 2>&1; rpm -q jdk1.8 >~/jdk-version; \
+    sudo cp -p /usr/java/default/jre/lib/security/{jssecacerts,java.security} ~; \
+    sudo ./install_jdk.sh -t oracle -j 8; \
+    sudo ./install_jce.sh; \
+    sudo cp -p /usr/java/default/jre/lib/security/java.security /usr/java/default/jre/lib/security/java.security-orig; \
+    sudo ./configure_jdk_tlsv1.2.sh; \
+    sudo cp -p ~/jssecacerts /usr/java/default/jre/lib/security/'
+done
+Start the CM server.  (sudo service cloudera-scm-server-db2 start; sudo service cloudera-scm-server start)
+In CM: Start all CMS processes.  Start all Key Trustee Server processes.  Start all cluster services.
+In CM: Remove all clusters and CMS from Maintenance mode.
+Rollback Tasks
+From a machine with Internet access, download the currently installed JDK RPM version for Linux x64 from Oracle.
+Secure copy the file from the download location to each server's /tmp directory.
+In CM: Put all clusters and CMS in Maintenance mode.
+In CM: Stop all cluster services.  Stop all Key Trustee Server processes.  Stop all CMS processes.
+Stop the CM server. (sudo service cloudera-scm-server stop; sudo service cloudera-scm-server-db2 stop)
+On each server: Save the version information on the currently installed JDK.  Backup the jssecacerts and java.security files. Downgrade the JDK. Install the Java Cryptography Extensions (JCE). Restore the java.security file. Restore the jssecacerts file.
+for HOST in $(cat HOSTLIST); do
+  echo "*** $HOST"
+  ssh -qt $HOST 'sudo cp -p /usr/java/default/jre/lib/security/{jssecacerts,java.security} ~; \
+    sudo rpm -e jdk1.8; \
+    sudo rpm -Uvh /tmp/jdk-8u$(awk -F_ '{print $2}' ~/jdk-version|awk -F- '{print $1}')-linux-x64.rpm; \
+    sudo ./install_jce.sh; \
+    sudo cp -p /usr/java/default/jre/lib/security/java.security /usr/java/default/jre/lib/security/java.security-orig; \
+    sudo cp -p ~/java.security /usr/java/default/jre/lib/security/; \
+    sudo cp -p ~/jssecacerts /usr/java/default/jre/lib/security/'
+done
+Start the CM server.  (sudo service cloudera-scm-server-db2 start; sudo service cloudera-scm-server start)
+In CM: Start all CMS processes.  Start all Key Trustee Server processes.  Start all cluster services.
+In CM: Remove all clusters and CMS from Maintenance mode.
+Post Tasks
+None.
+
+Without Internet Access
+Without direct access to the Internet and the Oracle download location, a local YUM repository will have to be populated in order to easily distribute the software to all of the servers in the Hadoop cluster.
+Pre-Requisites
+The YUM server must be configured to serve the Oracle JDK RPMs.
+Each server must have a YUM repo config file for the Oracle JDK YUM repository.
+YUMSERVER=<somehost> sudo wget -O /etc/yum.repos.d/oracle-java.repo http://${YUMSERVER}/oracle_java/oracle_java.repo
+Prep Tasks
+Add the new JDK RPM to the YUM server.
+From a machine with Internet access, download the JDK RPM for Linux x64 from Oracle.
+Secure copy the file from the download location to the YUM server.
+On the YUM server, move the file to /var/www/html/oracle_java/x86_64/ .
+On the YUM server, run createrepo to update the YUM database. (createrepo /var/www/html/oracle_java/x86_64/)
+Change Tasks
+In CM: Put all clusters and CMS in Maintenance mode.
+In CM: Stop all cluster services.  Stop all Key Trustee Server processes.  Stop all CMS processes.
+Stop the CM server. (sudo service cloudera-scm-server stop; sudo service cloudera-scm-server-db2 stop)
+On each server: Save the version information on the currently installed JDK. (java -version >~/java-version 2>&1; rpm -q jdk1.8 >~/jdk-version)
+On each server: Backup the jssecacerts and java.security files. (sudo cp -p /usr/java/default/jre/lib/security/{jssecacerts,java.security} ~)
+On each server: Upgrade the JDK. (sudo yum update jdk1.8)
+On each server: Update the java.security file to disable TLSv1.0 and TLSv1.1 protocols. (sudo cp -p /usr/java/default/jre/lib/security/java.security /usr/java/default/jre/lib/security/java.security-orig; sudo sed -e '/^jdk.tls.disabledAlgorithms=/s|SSLv3|TLSv1.1, TLSv1, SSLv3|' -i /usr/java/default/jre/lib/security/java.security)
+On each server: Restore the jssecaceerts file. (sudo cp -p ~/jssecacerts /usr/java/default/jre/lib/security/)
+Start the CM server.  (sudo service cloudera-scm-server-db2 start; sudo service cloudera-scm-server start)
+In CM: Start all CMS processes.  Start all Key Trustee Server processes.  Start all cluster services.
+In CM: Remove all clusters and CMS from Maintenance mode.
+Rollback Tasks
+In CM: Put all clusters and CMS in Maintenance mode.
+In CM: Stop all cluster services.  Stop all Key Trustee Server processes.  Stop all CMS processes.
+Stop the CM server. (sudo service cloudera-scm-server stop; sudo service cloudera-scm-server-db2 stop)
+On each server: Backup the jssecacerts and java.security files. (sudo cp -p /usr/java/default/jre/lib/security/{jssecacerts,java.security} ~)
+On each server: Downgrade the JDK. (sudo rpm -e jdk1.8; sudo yum install $(cat ~/jdk-version))
+On each server: Restore the java.security file. (sudo cp -p /usr/java/default/jre/lib/security/java.security /usr/java/default/jre/lib/security/java.security-orig; sudo cp -p ~/java.security /usr/java/default/jre/lib/security/)
+On each server: Restore the jssecaceerts file. (sudo cp -p ~/jssecacerts /usr/java/default/jre/lib/security/)
+Start the CM server.  (sudo service cloudera-scm-server-db2 start; sudo service cloudera-scm-server start)
+In CM: Start all CMS processes.  Start all Key Trustee Server processes.  Start all cluster services.
+In CM: Remove all clusters and CMS from Maintenance mode.
+Post Tasks
+None.
+
+
+
+sudo bash $BOPT ./install_jdk.sh --jdktype oraclejdk --jdkversion 8;
+./install_jdk.sh -t oracle -j 8; 
+
+ 1  cd
+    2  hostname -f
+    3  wget http://archive.clairvoyantsoft.com/oracle_java/8/rpm/x86_64/jdk-8u151-linux-x64.rpm
+    4  yum install wget
+    5  wget http://archive.clairvoyantsoft.com/oracle_java/8/rpm/x86_64/jdk-8u151-linux-x64.rpm
+    6  java -version
+    7  ls
+    8  rpm -i jdk-8u151-linux-x64.rpm
+    9  java -version
+   10  rpm -qa | grep jdk
+   11  which java
+   12  java -version
+   13  git clone https://github.com/teamclairvoyant/hadoop-deployment-bash
+   14  yum install git
+   15  git clone https://github.com/teamclairvoyant/hadoop-deployment-bash
+   16  ls
+   17  cd hadoop-deployment-bash/
+   18  ls
+   19  ./install_jdk.sh -t oracle -j 8;
+   20  java -version
+   21  rpm -qa | grep jdk
+   22  history
+   23  cd
+   24  ls
+   25  ls -lrth
+   26  rpm -i jdk-8u151-linux-x64.rpm
+   27  java -version
+   28  rpm -e jdk-8u151-linux-x64.rpm
+   29  sudo rpm -e jdk1.8;
+   30  java -version
+   31  rpm -qa | grep jdk
+   32  sudo rpm -i jdk-8u151-linux-x64.rpm
+   33  java -version
+   34  rpm -qa | grep jdk
+   35  h
