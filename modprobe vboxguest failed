@@ -1,0 +1,34 @@
+
+VM Setup
+
+1. Select os
+2. To start internet Preference set Network to dhcp
+3. Select vm's setting Netowrk now select NAT  (Avoide other)
+
+
+
+uname -a
+Linux localhost.localdomain 3.10.0-1160.49.1.el7.x86_64 #1 SMP Tue Nov 30 15:51:32 UTC 2021 x86_64 x86_64 x86_64 GNU/Linux
+
+
+Centos7
+sudo yum update
+
+
+    2  yum install binutils gcc make patch libgomp glibc-headers glibc-devel kernel-headers
+    3  yum install perl gcc dkms kernel-devel
+    4  install dkms
+    5  yum install kernel-PAE-devel
+    6  clear
+    7  install patch libgomp
+    8  yum install dkms binutils gcc make patch libgomp glibc-headers glibc-devel kernel-headers
+    9  cd
+   10  yum -y install epel-release
+   11  cd
+   12  sudo apt-get update
+   13  yum update
+   14  cd
+   15  yum install epel-release
+   16  yum install dkms binutils gcc make patch libgomp glibc-headers glibc-devel kernel-headers
+   17  yum install kernel-devel
+   18  cd
