@@ -31,4 +31,6 @@ sudo yum update
    15  yum install epel-release
    16  yum install dkms binutils gcc make patch libgomp glibc-headers glibc-devel kernel-headers
    17  yum install kernel-devel
+   
+   Restarted
    18  cd
