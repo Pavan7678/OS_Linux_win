@@ -1,0 +1,117 @@
+NTP and Chroyny service 
+
+
+/etc/ntp/ntpservers  - Contains ntp-server names
+*  the source you are synchronized to (says, peer)
+
+Method-1
+ntpq -p
+[root@vc-hdp-mgmt002b ~]# ntpq -p
+     remote           refid              st       t    when   poll    reach   delay     offset         jitter
+============================================================
+ LOCAL(0)        .LOCL.                  5        l    47h     64       0      0.000    0.000        0.000
+x10.10.70.30     216.239.35.12           2        u    87      1024     377    0.709    227.801      87.764
++10.10.70.31     216.239.35.8            2        u    233      1024    377    0.641    1.708        0.624
+*10.20.70.31     216.239.35.8            2        u    356     1024     377    1.116    0.660        2.463
+
+
+remote
+The IP address or DNS name of the remote server
+
+refid
+An identification of the type of the reference clock.
+
+st
+The "stratum" or level of the server: for almost all systems, 2 is great. Your local system will have a higher number.
+
+when
+This is the number of seconds since the server was last heard from. After a couple of minutes of operation your server should start to report numeric values here.
+poll
+Current polling interval in seconds. When remote servers are responding, "when" should be no greater than "poll".
+
+reach
+This and the remaining fields are important indicators of the health of your local server, your remote servers, and their communication. This field is really a bit array indicating whether responses have been received to your local server's eight most recent requests. The value starts at 0. If your local server is receiving responses to all its requests, it will go to 1, then 3, then 7. The display is in octal, so 377 is the maximum value. Anything less indicates that either your local server recently started or some requests did not receive responses.
+
+More easy to understand,
+The reach value is an octal number representing the number of responses received out of the last 8 requests.
+
+0 octal = 00000000, which indicates the NTP process did not receive any packet.
+1 octal = 00000001, which indicates the NTP process received only the latest packet.
+357 octal = 11101111, which indicates the packet before the latest four packets were lost.
+377 octal = 11111111 binary, which indicates the NTP process received the last eight packets.
+In this case, aaa.bbb.ccc.8 has reachability of "0", indicating that no valid response has been received.
+
+
+delay
+Recent average roundtrip time in milliseconds from request to response.
+
+offset
+The estimated differential between your system clock and this time server's clock, in milliseconds. You may consider this the "bottom line" on the accuracy of your system clock. NTP can usually drive this down to the level of the jitter or less.
+
+jitter
+A measure of the variability of the delays between request and receipt of a response, in milliseconds. High jitter tends to limit your server's ability to synchronize accurately.
+
+
+Using Syslog
+Your ntpd will log various events through your system's Syslog facility. This typically means the messages will show up in /var/log/messages, in lines containing the string "ntpd". Configuration problems are reported here. If your local server steps the time ahead or back suddenly, it will report that here also with a message such as: time reset -6.394626 s.
+
+Method-2
+ntpstat command
+The ntpstat command returns three types of status codes based on the NTP sync as mentioned below:
+0: It returns 0, if clock is synchronised.
+1: It returns 1, if clock is not synchronised.2: It returns 2, if clock state is indeterminant, for example if ntpd is not contactable.
+ntpstat      synchronised to NTP server (10.10.70.31) at stratum 3
+                  time correct to within 80 ms
+                   polling server every 1024 s
+Method-3:  Checking NTP sync status with timedatectl command
+ timedatectl
+                                                  Local time: Wed 2022-03-09 11:43:02 EST
+                                                   Universal time: Wed 2022-03-09 16:43:02 UTC
+                                                 RTC time: Wed 2022-03-09 16:43:02
+                                                Time zone: America/New_York (EST, -0500)
+                                                  NTP enabled: no
+                                                  NTP synchronized: yes
+                                                   RTC in local TZ: no
+                                                   DST active: no
+                                                   Last DST change: DST ended at
+                                                    Sun 2021-11-07 01:59:59 EDT
+                                                    Sun 2021-11-07 01:00:00 EST
+                                                    Next DST change: DST begins (the clock jumps one hour forward) at
+                                                   Sun 2022-03-13 01:59:59 EST
+                                                   Sun 2022-03-13 03:00:00 EDT
+
+
+
+
+
+
+
+
+Using tcpdump
+You can easily check if packets are going out from your system and coming back to your box using tcpdump. NTP uses port 123, so you might issue a command like this as root:
+ # tcpdump udp port 123
+Allow it to monitor traffic for up to an hour. You should see packets going out to your time servers port 123 (ntp) and replies coming back from each of them. Your local UDP port will probably also be number 123. Kernel firewalling (ipchains or iptables) can prevent synchronization from working even if the servers are replying to your system's requests.
+If you see packets coming in from the remote time servers, but ntpq indicates your server is not seeing them, then be sure to look at your ipchains/iptables configuration
+Also check the system log for configuration messages from ntpd.
+
+                                            nc -zuv <ntp_server_ip> 123
+It is possible to use the netcat nc command to test for connectivity to a remote NTP server using the following command.
+$ nc -zuv <ntp_server_ip> 123           (read carefullY)
+The -u flag tells netcat to use the UDP protocol as opposed to TCP. This presents the following issues.
+
+Since UDP does not use a handshake, netcat relies on the destination host replying with an ICMP Port Unreachable message indicating that there is no process listening on that port.
+If netcat receives no response at all, it assumes that the destination port is open and returns Connection to <ntp_server> port 123 [udp/ntp] succeeded!. This can lead to false-positive results if a network firewall drops the connection attempt without returning an error.
+Dispersion/Jitter
+
+
+ Chrony
+
+
+Chrony is replacement of NTP client. It can synchronize the system clock faster with better time accuracy and it can be very much useful for the systems which are not online all the time
+
+Chronyd is smaller in size, it uses less system memory and it wakes up the CPU only when necessary, which is better for power saving.
+It can perform well, even when the network is congested for longer periods of time. You can use any of the below commands to check Chrony status:
+chronyc tracking
+chronyc sources
+
+
